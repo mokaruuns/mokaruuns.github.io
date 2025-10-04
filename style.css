@@ -7,6 +7,7 @@
   --accent-2: #a1ffcf;
   --shadow: 0 20px 60px rgba(0,0,0,0.4);
   --radius: 16px;
+  --page-pad: clamp(12px, 4vw, 24px);
 }
 @media (prefers-color-scheme: light) {
   :root {
@@ -38,7 +39,10 @@ body {
   justify-content: center;
   align-items: flex-start;
   min-height: 100vh;
-  padding: clamp(12px, 4vw, 20px) clamp(10px, 4vw, 18px);
+  padding: calc(env(safe-area-inset-top, 0px) + var(--page-pad))
+           calc(env(safe-area-inset-right, 0px) + var(--page-pad))
+           calc(env(safe-area-inset-bottom, 0px) + var(--page-pad))
+           calc(env(safe-area-inset-left, 0px) + var(--page-pad));
   overflow-x: hidden;
   scrollbar-width: none;
 }
