@@ -5,6 +5,8 @@ const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
 const ASSETS = [
   '/',
   '/index.html',
+  '/style.css',
+  '/app.js',
   '/manifest.webmanifest',
   '/service-worker.js',
   '/icons/icon-192.svg',
