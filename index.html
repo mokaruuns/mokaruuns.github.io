@@ -1,0 +1,933 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Calm & Focus — дыхательные практики</title>
+  <meta name="description" content="Простое офлайн-приложение для дыхательных практик: 4-4-4-4, 4-7-8, когерентное, свой режим. Без рекламы и подписок." />
+  <style>
+    :root {
+      --bg: #0f1220;
+      --fg: #e8ebff;
+      --muted: #aab0d6;
+      --card: rgba(255,255,255,0.08);
+      --accent: #8ab4ff;
+      --accent-2: #a1ffcf;
+      --shadow: 0 20px 60px rgba(0,0,0,0.4);
+      --radius: 16px;
+    }
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f6f7fb;
+        --fg: #0f1220;
+        --muted: #515572;
+        --card: rgba(0,0,0,0.06);
+        --accent: #245bff;
+        --accent-2: #09b37b;
+        --shadow: 0 20px 40px rgba(0,0,0,0.08);
+      }
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", sans-serif;
+      background:
+        radial-gradient(1200px 1200px at 85% -10%, rgba(154, 201, 255, 0.18), transparent 50%),
+        radial-gradient(900px 900px at 10% 110%, rgba(138, 255, 207, 0.18), transparent 50%),
+        var(--bg);
+      color: var(--fg);
+      line-height: 1.5;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .app {
+      width: 100%;
+      max-width: 880px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px 20px 16px;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 4px 16px;
+    }
+    header h1 {
+      font-size: 20px;
+      margin: 0;
+      letter-spacing: 0.2px;
+    }
+    header .meta { color: var(--muted); font-size: 13px; }
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+      margin-bottom: 10px;
+    }
+    @media (min-width: 720px) {
+      .controls {
+        grid-template-columns: 1.5fr 1fr 1fr;
+        align-items: end;
+      }
+    }
+    .mode-info {
+      margin: 6px 0 18px;
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      padding: 16px 18px;
+    }
+    .mode-info h2 {
+      margin: 0 0 6px;
+      font-size: 16px;
+      letter-spacing: 0.1px;
+    }
+    .mode-info p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .mode-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.12);
+      color: var(--fg);
+      font-size: 12px;
+      letter-spacing: 0.2px;
+    }
+    .mode-steps {
+      margin-top: 12px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .field {
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+    label { display:block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    select, input[type="number"] {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(0,0,0,0.1);
+      background: rgba(255,255,255,0.9);
+      color: #0f1220;
+      font: inherit;
+    }
+    .row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .opt {
+      display:flex; align-items:center; gap:8px; color: var(--muted); font-size: 14px;
+    }
+    .opt input { transform: scale(1.1); }
+    .stage {
+      display:flex;
+      align-items:center;
+      gap: 16px;
+      margin: 10px 0 8px;
+      flex-wrap: wrap;
+    }
+    .stage .bar { flex: 1 1 240px; min-width: 180px; }
+    .big {
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap: 18px;
+      margin: 12px auto 10px;
+    }
+    .graph {
+      position: relative;
+      width: min(90vw, 560px);
+      aspect-ratio: 4 / 3;
+      background: linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.05));
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,0.16);
+      box-shadow: inset 0 12px 40px rgba(255,255,255,0.08), 0 18px 60px rgba(15,18,32,0.32);
+      overflow: hidden;
+    }
+    .graph svg { width:100%; height:100%; display:block; }
+    .graph-grid line {
+      stroke: rgba(255,255,255,0.12);
+      stroke-width: 0.4;
+    }
+    .graph-axis {
+      stroke: rgba(255,255,255,0.28);
+      stroke-width: 0.7;
+    }
+    #graphArea {
+      fill: url(#graphGradient);
+      opacity: 0.65;
+    }
+    #graphLine {
+      fill: none;
+      stroke: rgba(255,255,255,0.38);
+      stroke-width: 1.6;
+      stroke-linejoin: round;
+    }
+    #graphLineActive {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 2.6;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    #graphDot {
+      fill: #fff;
+      stroke: var(--accent);
+      stroke-width: 1.8;
+    }
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      user-select: none;
+    }
+    .stage .hint {
+      margin-left: auto;
+      padding: 4px 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .phase {
+      font-size: clamp(22px, 3.8vw, 34px);
+      font-weight: 650;
+      letter-spacing: 0.5px;
+      text-align:center;
+      margin: 8px 0 0;
+    }
+    .sub {
+      text-align:center;
+      color: var(--muted);
+      margin-top: 4px;
+      font-size: 14px;
+    }
+    .bar {
+      height: 6px;
+      background: rgba(255,255,255,0.18);
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 6px 0 0;
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+    .bar > i {
+      display:block;
+      height:100%;
+      width:0%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      border-radius: 999px;
+      transition: width 0.2s linear;
+    }
+    .actions {
+      display:flex; gap:10px; justify-content:center; margin: 12px 0 2px;
+    }
+    .btn {
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: none;
+      font: inherit;
+      cursor: pointer;
+      background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0.7));
+      color: #0f1220;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.14);
+      transition: transform 0.04s ease;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn.secondary {
+      background: rgba(255,255,255,0.2);
+      color: var(--fg);
+      border: 1px solid rgba(255,255,255,0.18);
+    }
+    footer {
+      display:flex; justify-content:space-between; align-items:center; gap:8px;
+      color: var(--muted); font-size: 12px; padding-top: 6px;
+    }
+    .stats { display:flex; gap: 14px; align-items:center; }
+    .kbd {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      background: rgba(255,255,255,0.14);
+      padding: 2px 6px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2);
+      color: var(--fg);
+    }
+    .visually-hidden { position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0 0 0 0); border:0; }
+  </style>
+</head>
+<body>
+  <div class="app" role="application" aria-label="Дыхательные практики для спокойствия и фокуса">
+    <header>
+      <h1>Calm & Focus</h1>
+      <div class="meta">Просто дышите. Без подписок и рекламы.</div>
+    </header>
+
+    <section class="controls" aria-label="Настройки">
+      <div class="field">
+        <label for="mode">Режим дыхания</label>
+        <select id="mode">
+          <option value="box">Коробочное 4-4-4-4</option>
+          <option value="478">4-7-8 (успокоение)</option>
+          <option value="coherent">Когерентное 5-5 (фокус)</option>
+          <option value="custom">Свой режим</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="session">Длительность сессии</label>
+        <select id="session">
+          <option value="1">1 мин</option>
+          <option value="3" selected>3 мин</option>
+          <option value="5">5 мин</option>
+          <option value="10">10 мин</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label>Подсказки</label>
+        <div class="opt"><input type="checkbox" id="sound" checked><label for="sound">Звук (тик)</label></div>
+        <div class="opt"><input type="checkbox" id="haptics" checked><label for="haptics">Вибро (мобильные)</label></div>
+      </div>
+    </section>
+
+    <section id="customFields" class="field" style="display:none" aria-label="Свой режим">
+      <label>Фазы (сек.)</label>
+      <div class="row">
+        <div>
+          <label for="cIn">Вдох</label>
+          <input id="cIn" type="number" inputmode="decimal" min="0.5" max="60" step="0.5" value="4" />
+        </div>
+        <div>
+          <label for="cH1">Задержка</label>
+          <input id="cH1" type="number" inputmode="decimal" min="0" max="60" step="0.5" value="4" />
+        </div>
+        <div>
+          <label for="cOut">Выдох</label>
+          <input id="cOut" type="number" inputmode="decimal" min="0.5" max="60" step="0.5" value="4" />
+        </div>
+        <div>
+          <label for="cH2">Задержка</label>
+          <input id="cH2" type="number" inputmode="decimal" min="0" max="60" step="0.5" value="4" />
+        </div>
+      </div>
+    </section>
+
+    <section id="modeInfo" class="mode-info" aria-live="polite">
+      <h2 id="modeInfoTitle">Коробочное 4-4-4-4</h2>
+      <p id="modeInfoDesc">Классический ритм для быстрого восстановления после стресса.</p>
+      <div class="mode-tags" id="modeTags"></div>
+      <div class="mode-steps" id="modeSteps">Вдох 4 с → Задержка 4 с → Выдох 4 с → Задержка 4 с</div>
+    </section>
+
+    <section class="stage" aria-live="polite">
+      <div id="progressTrack" class="bar" role="progressbar" aria-label="Прогресс сессии" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <i id="progress"></i>
+      </div>
+      <div class="hint"><span class="kbd">Space</span> — старт/пауза</div>
+    </section>
+
+    <section class="big" aria-label="График дыхания">
+      <div class="graph">
+        <svg id="breathSvg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <linearGradient id="graphGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#8ab4ff" stop-opacity="0.28" />
+              <stop offset="65%" stop-color="#a1ffcf" stop-opacity="0.2" />
+              <stop offset="100%" stop-color="#a1ffcf" stop-opacity="0" />
+            </linearGradient>
+          </defs>
+          <g class="graph-grid">
+            <line x1="0" y1="18" x2="100" y2="18"></line>
+            <line x1="0" y1="50" x2="100" y2="50"></line>
+            <line x1="0" y1="82" x2="100" y2="82"></line>
+          </g>
+          <line class="graph-axis" x1="0" y1="92" x2="100" y2="92"></line>
+          <polygon id="graphArea" points="0,82 100,82 100,100 0,100"></polygon>
+          <polyline id="graphLine" points="0,82 100,82"></polyline>
+          <polyline id="graphLineActive" points="0,82 100,82"></polyline>
+          <circle id="graphDot" cx="0" cy="82" r="2.4"></circle>
+        </svg>
+      </div>
+      <div id="phase" class="phase">Готовы?</div>
+      <div class="sub" id="sub">Выберите режим и нажмите Старт</div>
+    </section>
+
+    <div class="actions">
+      <button id="start" class="btn">Старт</button>
+      <button id="reset" class="btn secondary" disabled>Сброс</button>
+    </div>
+
+    <footer>
+      <div class="stats">
+        <span id="statToday">Сегодня: 0</span>
+        <span id="statTotal">Всего: 0</span>
+      </div>
+      <div>
+        <span class="kbd">1</span>/<span class="kbd">2</span>/<span class="kbd">3</span>/<span class="kbd">4</span> — режимы
+      </div>
+    </footer>
+  </div>
+
+  <div class="visually-hidden" aria-live="assertive" id="ariaPhase"></div>
+
+  <script>
+    // ------- МОДЕЛЬ РЕЖИМОВ -------
+    const presets = {
+      box: {
+        name: "Коробочное 4-4-4-4",
+        description: "Равномерный квадрат дыхания: помогает быстро успокоить нервную систему и вернуть концентрацию.",
+        tags: ["Антистресс", "Ровный ритм"],
+        phases: [4,4,4,4]
+      },
+      "478": {
+        name: "4-7-8 (успокоение)",
+        description: "Популярная вечерняя техника: удлинённый выдох активирует парасимпатическую систему и снижает напряжение.",
+        tags: ["Сон", "Расслабление"],
+        phases: [4,7,8,0]
+      },
+      coherent: {
+        name: "Когерентное 5-5 (фокус)",
+        description: "Синхронизирует дыхание и сердечный ритм, мягко повышая собранность и устойчивое внимание.",
+        tags: ["Фокус", "Энергия"],
+        phases: [5,0,5,0]
+      }
+    };
+    const customInfo = {
+      name: "Свой ритм",
+      description: "Соберите подходящий вам цикл. Можно использовать дробные значения и отключать паузы, устанавливая их в 0 секунд.",
+      tags: ["Персонально"]
+    };
+    const phaseLabels = [
+      "Вдох",
+      "Задержка на вдохе",
+      "Выдох",
+      "Задержка на выдохе"
+    ];
+
+    // ------- ЭЛЕМЕНТЫ UI -------
+    const selMode   = document.getElementById('mode');
+    const selSess   = document.getElementById('session');
+    const chkSound  = document.getElementById('sound');
+    const chkHap    = document.getElementById('haptics');
+    const customBox = document.getElementById('customFields');
+    const cIn  = document.getElementById('cIn');
+    const cH1  = document.getElementById('cH1');
+    const cOut = document.getElementById('cOut');
+    const cH2  = document.getElementById('cH2');
+
+    const btnStart = document.getElementById('start');
+    const btnReset = document.getElementById('reset');
+
+    const elPhase = document.getElementById('phase');
+    const elSub   = document.getElementById('sub');
+    const elBar   = document.getElementById('progress');
+    const elBarTrack = document.getElementById('progressTrack');
+    const ariaPhase = document.getElementById('ariaPhase');
+    const elModeTitle = document.getElementById('modeInfoTitle');
+    const elModeDesc = document.getElementById('modeInfoDesc');
+    const elModeSteps = document.getElementById('modeSteps');
+    const elModeTags = document.getElementById('modeTags');
+    const customInputs = [cIn, cH1, cOut, cH2];
+    const elGraphArea = document.getElementById('graphArea');
+    const elGraphLine = document.getElementById('graphLine');
+    const elGraphLineActive = document.getElementById('graphLineActive');
+    const elGraphDot = document.getElementById('graphDot');
+
+    // ------- СОСТОЯНИЕ -------
+    const GRAPH_W = 100;
+    const GRAPH_Y_BOTTOM = 82;
+    const GRAPH_Y_TOP = 18;
+    let running = false;
+    let phaseIdx = 0;      // 0: inhale, 1: hold1, 2: exhale, 3: hold2
+    let phaseElapsed = 0;  // ms
+    let lastTick = 0;
+    let totalMs = 0;
+    let sessionTarget = 0; // ms
+    let tickHandle = null;
+    let toneFadeTimer = null;
+    let graphPoints = [];
+
+    // audio
+    const soundEngine = (() => {
+      const AudioCtor = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtor) {
+        return {
+          phaseCue() {},
+          mute() {},
+          complete() {}
+        };
+      }
+      let ctx = null;
+      let masterGain = null;
+      function ensureCtx() {
+        if (!ctx) {
+          ctx = new AudioCtor();
+          masterGain = ctx.createGain();
+          masterGain.gain.value = 0.38;
+          masterGain.connect(ctx.destination);
+        }
+        if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+      }
+      function createCue(freq, { duration = 1.4, peak = 0.12, delay = 0 } = {}) {
+        ensureCtx();
+        const now = ctx.currentTime;
+        const startAt = now + delay;
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, startAt);
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.0001, startAt);
+        osc.connect(gain);
+        gain.connect(masterGain);
+        gain.gain.linearRampToValueAtTime(peak, startAt + 0.18);
+        gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
+        osc.start(startAt);
+        osc.stop(startAt + duration + 0.1);
+      }
+      function playPhaseCue(idx) {
+        if (!chkSound.checked) return;
+        const freqMap = [432, 396, 352, 320];
+        createCue(freqMap[idx] || 392, { duration: 1.5, peak: 0.11 });
+      }
+      function playCompleteCue() {
+        if (!chkSound.checked) return;
+        createCue(512, { duration: 1.8, peak: 0.12 });
+        createCue(640, { duration: 2.1, peak: 0.1, delay: 0.22 });
+      }
+      return {
+        phaseCue(idx) { playPhaseCue(idx); },
+        mute() {},
+        complete() { playCompleteCue(); }
+      };
+    })();
+
+    // ------- ХРАНИЛКА -------
+    const store = {
+      save() {
+        const data = {
+          mode: selMode.value,
+          session: selSess.value,
+          sound: chkSound.checked,
+          haptics: chkHap.checked,
+          custom: [cIn.valueAsNumber, cH1.valueAsNumber, cOut.valueAsNumber, cH2.valueAsNumber]
+        };
+        localStorage.setItem('cf_breath_v1', JSON.stringify(data));
+      },
+      load() {
+        const raw = localStorage.getItem('cf_breath_v1');
+        if (!raw) return;
+        try {
+          const d = JSON.parse(raw);
+          if (d.mode) selMode.value = d.mode;
+          if (d.session) selSess.value = d.session;
+          if (typeof d.sound === 'boolean') chkSound.checked = d.sound;
+          if (typeof d.haptics === 'boolean') chkHap.checked = d.haptics;
+          if (Array.isArray(d.custom) && d.custom.length === 4) {
+            [cIn.value, cH1.value, cOut.value, cH2.value] = d.custom.map(n => Math.max(0, Number(n)||0));
+          }
+        } catch {}
+        toggleCustom();
+        updateModeInfo();
+      }
+    };
+
+    // ------- СТАТИСТИКА -------
+    const stats = {
+      key: 'cf_stats_v1',
+      read() {
+        try { return JSON.parse(localStorage.getItem(this.key)) || { total:0, lastDay: "", today:0 }; }
+        catch { return { total:0, lastDay:"", today:0 }; }
+      },
+      write(s) { localStorage.setItem(this.key, JSON.stringify(s)); },
+      bump() {
+        const s = this.read();
+        const day = new Date().toISOString().slice(0,10);
+        if (s.lastDay !== day) { s.lastDay = day; s.today = 0; }
+        s.today += 1; s.total += 1; this.write(s); renderStats();
+      }
+    };
+    function renderStats() {
+      const s = stats.read();
+      document.getElementById('statToday').textContent = `Сегодня: ${s.today}`;
+      document.getElementById('statTotal').textContent = `Всего: ${s.total}`;
+    }
+
+    // ------- УТИЛИТЫ -------
+    const nfInt = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 });
+    const nfFrac = new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    function formatValue(val) {
+      if (!Number.isFinite(val)) return '—';
+      const rounded = Math.round(val * 10) / 10;
+      if (Math.abs(rounded - Math.round(rounded)) < 1e-4) {
+        return nfInt.format(Math.round(rounded));
+      }
+      return nfFrac.format(rounded);
+    }
+    function renderTags(tags) {
+      elModeTags.textContent = '';
+      tags.forEach(text => {
+        const span = document.createElement('span');
+        span.className = 'tag';
+        span.textContent = text;
+        elModeTags.appendChild(span);
+      });
+    }
+    function formatSteps(pattern) {
+      const steps = pattern
+        .map((dur, idx) => dur > 0 ? `${phaseLabels[idx]} ${formatValue(dur)} с` : null)
+        .filter(Boolean);
+      return steps.length ? steps.join(' → ') : 'Добавьте длительности фаз, чтобы построить ритм.';
+    }
+    function buildGraphData(patternSec) {
+      const durations = patternSec.map(n => Math.max(0, Number(n) || 0));
+      let total = durations.reduce((sum, val) => sum + val, 0);
+      if (total <= 0) {
+        total = 1;
+      }
+      const linePoints = [];
+      let x = 0;
+      let y = GRAPH_Y_BOTTOM;
+      linePoints.push({ x, y });
+      durations.forEach((dur, idx) => {
+        if (dur <= 0) return;
+        x += (dur / total) * GRAPH_W;
+        x = Math.min(GRAPH_W, x);
+        if (idx === 0) {
+          y = GRAPH_Y_TOP;
+        } else if (idx === 2) {
+          y = GRAPH_Y_BOTTOM;
+        } // holds keep current y
+        linePoints.push({ x, y });
+      });
+      if (linePoints[linePoints.length - 1].x < GRAPH_W) {
+        linePoints.push({ x: GRAPH_W, y });
+      }
+      if (linePoints[linePoints.length - 1].y !== GRAPH_Y_BOTTOM) {
+        linePoints.push({ x: GRAPH_W, y: GRAPH_Y_BOTTOM });
+      }
+      return {
+        linePoints,
+        durations,
+        total
+      };
+    }
+    function renderGraph(patternSec) {
+      const data = buildGraphData(patternSec);
+      graphPoints = data.linePoints.map(p => ({ x: p.x, y: p.y }));
+      const lineStr = graphPoints.map(p => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ');
+      const areaStr = `${lineStr} ${GRAPH_W.toFixed(2)},${GRAPH_Y_BOTTOM.toFixed(2)} ${GRAPH_W.toFixed(2)},100 0,100`;
+      elGraphLine.setAttribute('points', lineStr);
+      if (graphPoints.length) {
+        elGraphLineActive.setAttribute('points', `${graphPoints[0].x.toFixed(2)},${graphPoints[0].y.toFixed(2)}`);
+      }
+      elGraphArea.setAttribute('points', areaStr);
+    }
+    function getGraphPoint(patternSec, progress) {
+      const durations = patternSec.map(n => Math.max(0, Number(n) || 0));
+      const total = durations.reduce((sum, val) => sum + val, 0);
+      if (total <= 0) {
+        return { x: 0, y: GRAPH_Y_BOTTOM };
+      }
+      const clampedProgress = Math.max(0, Math.min(1, progress));
+      const target = clampedProgress * total;
+      let passed = 0;
+      for (let i = 0; i < durations.length; i += 1) {
+        const dur = durations[i];
+        if (dur <= 0) continue;
+        if (target <= passed + dur + 1e-6) {
+          const localT = Math.max(0, Math.min(1, (target - passed) / dur));
+          let y;
+          if (i === 0) {
+            y = GRAPH_Y_BOTTOM - (GRAPH_Y_BOTTOM - GRAPH_Y_TOP) * localT;
+          } else if (i === 2) {
+            y = GRAPH_Y_TOP + (GRAPH_Y_BOTTOM - GRAPH_Y_TOP) * localT;
+          } else {
+            y = i === 1 ? GRAPH_Y_TOP : GRAPH_Y_BOTTOM;
+          }
+          return { x: clampedProgress * GRAPH_W, y };
+        }
+        passed += dur;
+      }
+      return { x: GRAPH_W, y: GRAPH_Y_BOTTOM };
+    }
+    function updateGraphIndicator(patternSec, progress) {
+      const { x, y } = getGraphPoint(patternSec, progress);
+      elGraphDot.setAttribute('cx', x.toFixed(2));
+      elGraphDot.setAttribute('cy', y.toFixed(2));
+      const clamped = Math.max(0, Math.min(1, progress));
+      if (graphPoints.length <= 1) {
+        elGraphLineActive.setAttribute('points', `${x.toFixed(2)},${y.toFixed(2)}`);
+        return;
+      }
+      const active = [];
+      const targetX = clamped * GRAPH_W;
+      active.push({ x: graphPoints[0].x, y: graphPoints[0].y });
+      for (let i = 0; i < graphPoints.length - 1; i += 1) {
+        const start = graphPoints[i];
+        const end = graphPoints[i + 1];
+        if (targetX >= end.x - 0.001) {
+          active.push({ x: end.x, y: end.y });
+          continue;
+        }
+        const spanX = end.x - start.x;
+        const spanY = end.y - start.y;
+        let ratio;
+        if (Math.abs(spanX) < 0.0001) {
+          ratio = clamped >= end.x / GRAPH_W ? 1 : 0;
+        } else {
+          ratio = Math.max(0, Math.min(1, (targetX - start.x) / spanX));
+        }
+        const partialX = start.x + spanX * ratio;
+        const partialY = start.y + spanY * ratio;
+        active.push({ x: partialX, y: partialY });
+        break;
+      }
+      const activeStr = active.map(p => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' ');
+      elGraphLineActive.setAttribute('points', activeStr);
+    }
+    function updateModeInfo() {
+      const modeKey = selMode.value;
+      const preset = modeKey === 'custom' ? customInfo : presets[modeKey];
+      elModeTitle.textContent = preset.name;
+      elModeDesc.textContent = preset.description;
+      const pattern = getPattern();
+      elModeSteps.textContent = formatSteps(pattern);
+      const total = pattern.reduce((sum, val) => sum + Math.max(0, Number(val) || 0), 0);
+      const tagList = [...(preset.tags || [])];
+      if (total > 0.0001) {
+        tagList.push(`Цикл: ${formatValue(total)} с`);
+        tagList.push(`~${formatValue(60 / total)} дыхания/мин`);
+      } else {
+        tagList.push('Цикл: —');
+      }
+      const sessionMin = Number(selSess.value) || 0;
+      if (sessionMin) tagList.push(`Сессия: ${sessionMin} мин`);
+      renderTags(tagList);
+      renderGraph(pattern);
+      updateGraphIndicator(pattern, 0);
+    }
+    function getPattern() {
+      if (selMode.value === 'custom') {
+        const arr = customInputs.map(el => Number.isFinite(el.valueAsNumber) ? el.valueAsNumber : 0);
+        // не позволяем всем фазам быть нулевыми
+        if (arr.reduce((a,b)=>a+b,0) === 0) arr[0] = 4, arr[2] = 4;
+        return arr;
+      }
+      return presets[selMode.value].phases.slice();
+    }
+    function ms(sec){ return sec * 1000; }
+    function buzz() {
+      if (chkHap.checked && 'vibrate' in navigator) navigator.vibrate(20);
+    }
+    function setPhaseLabel(idx, seconds) {
+      const titles = ['Вдох', 'Задержка', 'Выдох', 'Задержка'];
+      const hints = [
+        'Наберите воздух через нос',
+        'Сохраняйте мягкое внимание за вдохом',
+        'Плавно отпускайте воздух через нос или рот',
+        'Почувствуйте паузу и расслабление'
+      ];
+      const label = titles[idx] || '';
+      elPhase.textContent = label;
+      ariaPhase.textContent = label;
+      if (seconds === undefined) {
+        elSub.textContent = hints[idx] || '';
+        return;
+      }
+      const sec = Number(seconds);
+      const hasDuration = Number.isFinite(sec) && sec > 0;
+      const hint = hints[idx] || '';
+      if (!hasDuration) {
+        elSub.textContent = hint;
+        return;
+      }
+      const durationLabel = `${formatValue(sec)} с`;
+      elSub.textContent = hint ? `${hint} · ${durationLabel}` : durationLabel;
+    }
+    function setButtons() {
+      btnStart.textContent = running ? 'Пауза' : 'Старт';
+      btnReset.disabled = running && totalMs < 500 ? true : !(!running && totalMs>0);
+    }
+
+    // ------- ЦИКЛ -------
+    function start() {
+      if (running) return;
+      if (toneFadeTimer) {
+        clearTimeout(toneFadeTimer);
+        toneFadeTimer = null;
+      }
+      // инициализация
+      const sessionMin = Number(selSess.value) || 3;
+      sessionTarget = ms(sessionMin*60);
+      totalMs = totalMs || 0;
+      lastTick = performance.now();
+      if (totalMs === 0) { // новая сессия
+        phaseIdx = 0;
+        phaseElapsed = 0;
+        const patternSec = getPattern();
+        updateGraphIndicator(patternSec, 0);
+        setPhaseLabel(phaseIdx, patternSec[phaseIdx]);
+        soundEngine.phaseCue(phaseIdx);
+        buzz();
+      }
+      running = true;
+      setButtons();
+      tickHandle = requestAnimationFrame(loop);
+    }
+    function pause(options = {}) {
+      running = false;
+      setButtons();
+      if (tickHandle) cancelAnimationFrame(tickHandle);
+      if (toneFadeTimer) {
+        clearTimeout(toneFadeTimer);
+        toneFadeTimer = null;
+      }
+      if (!options.keepSound) soundEngine.mute();
+    }
+    function reset() {
+      pause();
+      totalMs = 0; phaseIdx = 0; phaseElapsed = 0;
+      elBar.style.width = '0%';
+      if (elBarTrack) elBarTrack.setAttribute('aria-valuenow', '0');
+      updateGraphIndicator(getPattern(), 0);
+      elPhase.textContent = 'Готовы?';
+      elSub.textContent = 'Выберите режим и нажмите Старт';
+      setButtons();
+    }
+    function finish() {
+      pause({ keepSound: true });
+      soundEngine.complete();
+      stats.bump();
+      elPhase.textContent = 'Готово ✔';
+      elSub.textContent = 'Отметьте ощущения и плавно вернитесь к делам';
+      updateGraphIndicator(getPattern(), 0);
+      setButtons();
+      if (toneFadeTimer) clearTimeout(toneFadeTimer);
+      toneFadeTimer = setTimeout(() => {
+        soundEngine.mute();
+        toneFadeTimer = null;
+      }, 1300);
+    }
+    function loop(now) {
+      if (!running) return;
+      const dt = Math.min(100, now - lastTick); // защита от вкладок в фоне
+      lastTick = now;
+      const patternSec = getPattern();
+      const pattern = patternSec.map(ms);
+      const curDur = Math.max(1, pattern[phaseIdx]);
+      phaseElapsed += dt;
+      totalMs += dt;
+
+      setPhaseLabel(phaseIdx, patternSec[phaseIdx]);
+      const cycleTotal = pattern.reduce((sum, val) => sum + Math.max(0, val), 0);
+      if (cycleTotal > 0) {
+        const prior = pattern.slice(0, phaseIdx).reduce((sum, val) => sum + Math.max(0, val), 0);
+        const cycleProgress = Math.max(0, Math.min(1, (prior + phaseElapsed) / cycleTotal));
+        updateGraphIndicator(patternSec, cycleProgress);
+      } else {
+        updateGraphIndicator(patternSec, 0);
+      }
+
+      // прогресс сессии
+      const sessionProgress = Math.min(100, (totalMs / sessionTarget)*100);
+      elBar.style.width = `${sessionProgress}%`;
+      if (elBarTrack) {
+        elBarTrack.setAttribute('aria-valuenow', sessionProgress.toFixed(0));
+      }
+
+      // переход фазы
+      if (phaseElapsed >= curDur) {
+        phaseElapsed = 0;
+        phaseIdx = (phaseIdx + 1) % 4;
+        // если фаза с нулевой длительностью — шагнем дальше
+        let safety = 0;
+        while (pattern[phaseIdx] <= 1 && safety++ < 4) {
+          phaseIdx = (phaseIdx + 1) % 4;
+        }
+        soundEngine.phaseCue(phaseIdx);
+        buzz();
+      }
+      // окончание сессии
+      if (totalMs >= sessionTarget) {
+        finish();
+        return;
+      }
+      tickHandle = requestAnimationFrame(loop);
+    }
+
+    // ------- СВЯЗИ UI -------
+    function toggleCustom() {
+      const isCustom = selMode.value === 'custom';
+      customBox.style.display = isCustom ? 'block' : 'none';
+    }
+
+    selMode.addEventListener('change', () => {
+      toggleCustom();
+      store.save();
+      reset();
+      updateModeInfo();
+    });
+    selSess.addEventListener('change', () => {
+      store.save();
+      reset();
+      updateModeInfo();
+    });
+    chkSound.addEventListener('change', () => {
+      store.save();
+      if (!chkSound.checked) {
+        soundEngine.mute();
+      } else if (running) {
+        soundEngine.phaseCue(phaseIdx);
+      }
+    });
+    chkHap.addEventListener('change', () => { store.save(); });
+    customInputs.forEach(el => {
+      el.addEventListener('input', updateModeInfo);
+      el.addEventListener('change', () => {
+        store.save();
+        reset();
+        updateModeInfo();
+      });
+    });
+
+    btnStart.addEventListener('click', () => {
+      if (running) pause(); else start();
+    });
+    btnReset.addEventListener('click', reset);
+
+    // Клавиатура
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') { e.preventDefault(); running ? pause() : start(); }
+      // 1..4 — режимы
+      if (['Digit1','Digit2','Digit3','Digit4'].includes(e.code)) {
+        const map = ['box', '478', 'coherent', 'custom'];
+        selMode.value = map[Number(e.code.slice(-1))-1];
+        toggleCustom(); store.save(); reset();
+      }
+    });
+
+    // ------- ИНИЦ ------
+    store.load();
+    updateModeInfo();
+    renderStats();
+    setButtons();
+
+    // Подсказки для SR (первый фокус)
+    setTimeout(() => { ariaPhase.textContent = 'Приложение готово. Выберите режим и нажмите Старт.'; }, 200);
+  </script>
+
+  <!-- Примечание: это не медицинское изделие. Если есть проблемы с дыханием, проконсультируйтесь с врачом. -->
+</body>
+</html>
