@@ -44,16 +44,22 @@ jobs:
         with:
           preview: ${{ github.ref != 'refs/heads/main' }}
 
+      - name: Debug deployment outputs
+        run: echo "deployment outputs -> ${{ toJSON(steps.deployment.outputs) }}"
+
       - name: Share deployment link
         if: steps.deployment.outputs.page_url
+        env:
+          BASE_URL: ${{ steps.deployment.outputs.page_url }}
+          BUILD_VERSION: ${{ steps.deployment.outputs.pages_build_version }}
+          IS_MAIN: ${{ github.ref == 'refs/heads/main' }}
         run: |
-          BASE="${{ steps.deployment.outputs.page_url }}"
+          BASE="$BASE_URL"
           if [[ "$BASE" != */ ]]; then BASE="$BASE/"; fi
-          if [[ "${{ github.ref }}" == 'refs/heads/main' ]]; then
+          if [[ "$IS_MAIN" == 'true' ]]; then
             URL="$BASE"
           else
-            BUILD="${{ steps.deployment.outputs.pages_build_version }}"
-            URL="${BASE}_preview/${BUILD}/"
+            URL="${BASE}_preview/${BUILD_VERSION}/"
           fi
           echo "Preview URL: ${URL}" >> $GITHUB_STEP_SUMMARY
           echo "preview_url=${URL}" >> $GITHUB_OUTPUT
