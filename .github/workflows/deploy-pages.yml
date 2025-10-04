@@ -47,5 +47,6 @@ jobs:
       - name: Share deployment link
         if: steps.deployment.outputs.page_url
         run: |
-          echo "Preview URL: ${{ steps.deployment.outputs.page_url }}" >> $GITHUB_STEP_SUMMARY
-          echo "preview_url=${{ steps.deployment.outputs.page_url }}" >> $GITHUB_OUTPUT
+          URL="${{ steps.deployment.outputs.preview_url || steps.deployment.outputs.page_url }}"
+          echo "Preview URL: ${URL}" >> $GITHUB_STEP_SUMMARY
+          echo "preview_url=${URL}" >> $GITHUB_OUTPUT
