@@ -27,7 +27,7 @@ jobs:
           cp -r index.html style.css app.js icons manifest.webmanifest service-worker.js dist/
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v2
+        uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
