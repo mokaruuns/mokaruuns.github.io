@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     environment:
-      name: ${{ github.ref == 'refs/heads/main' && 'github-pages' || format('preview-{0}', github.ref_name) }}
+      name: ${{ github.ref == 'refs/heads/main' && 'github-pages' || format('preview-{0}', replace(github.ref_name, '/', '-')) }}
       url:  ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Deploy to GitHub Pages
@@ -43,3 +43,9 @@ jobs:
         uses: actions/deploy-pages@v4
         with:
           preview: ${{ github.ref != 'refs/heads/main' }}
+
+      - name: Share deployment link
+        if: steps.deployment.outputs.page_url
+        run: |
+          echo "Preview URL: ${{ steps.deployment.outputs.page_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "preview_url=${{ steps.deployment.outputs.page_url }}" >> $GITHUB_OUTPUT
