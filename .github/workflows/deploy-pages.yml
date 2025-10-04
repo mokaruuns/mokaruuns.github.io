@@ -47,6 +47,13 @@ jobs:
       - name: Share deployment link
         if: steps.deployment.outputs.page_url
         run: |
-          URL="${{ steps.deployment.outputs.preview_url || steps.deployment.outputs.page_url }}"
+          BASE="${{ steps.deployment.outputs.page_url }}"
+          if [[ "$BASE" != */ ]]; then BASE="$BASE/"; fi
+          if [[ "${{ github.ref }}" == 'refs/heads/main' ]]; then
+            URL="$BASE"
+          else
+            BUILD="${{ steps.deployment.outputs.pages_build_version }}"
+            URL="${BASE}_preview/${BUILD}/"
+          fi
           echo "Preview URL: ${URL}" >> $GITHUB_STEP_SUMMARY
           echo "preview_url=${URL}" >> $GITHUB_OUTPUT
