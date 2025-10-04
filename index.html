@@ -3,6 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0f1220" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icons/icon-512.svg" />
   <title>Calm & Focus — дыхательные практики</title>
   <meta name="description" content="Простое офлайн-приложение для дыхательных практик: 4-4-4-4, 4-7-8, когерентное, свой режим. Без рекламы и подписок." />
   <style>
@@ -926,6 +931,15 @@
 
     // Подсказки для SR (первый фокус)
     setTimeout(() => { ariaPhase.textContent = 'Приложение готово. Выберите режим и нажмите Старт.'; }, 200);
+
+    // ------- PWA -------
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js').catch(() => {
+          // тихо игнорируем ошибку регистрации, чтобы не мешать работе приложения
+        });
+      });
+    }
   </script>
 
   <!-- Примечание: это не медицинское изделие. Если есть проблемы с дыханием, проконсультируйтесь с врачом. -->
