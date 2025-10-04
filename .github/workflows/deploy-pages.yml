@@ -1,0 +1,45 @@
+name: Deploy Pages
+
+on:
+  push:
+    branches: [main, release/**]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare static bundle
+        run: |
+          mkdir -p dist
+          cp -r index.html style.css app.js icons manifest.webmanifest service-worker.js dist/
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: dist
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: ${{ github.ref == 'refs/heads/main' && 'github-pages' || format('preview-{0}', github.ref_name) }}
+      url:  ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+        with:
+          preview: ${{ github.ref != 'refs/heads/main' }}
