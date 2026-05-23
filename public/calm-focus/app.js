@@ -167,28 +167,220 @@
       }
     }
 
-    const savedModesStore = {
-      key: 'cf_saved_modes_v1',
-      read() {
+    const calmDb = (() => {
+      const DB_NAME = 'calm_focus_db';
+      const DB_VERSION = 1;
+      const LEGACY_KEYS = {
+        settings: 'cf_breath_v1',
+        presets: 'cf_saved_modes_v1',
+        stats: 'cf_stats_v2',
+        oldStats: 'cf_stats_v1',
+        migration: 'cf_idb_migrated_v1',
+        sessionFallback: 'cf_sessions_v1'
+      };
+      let dbPromise = null;
+
+      function isSupported() {
+        return 'indexedDB' in window;
+      }
+
+      function open() {
+        if (!isSupported()) return Promise.reject(new Error('IndexedDB is unavailable'));
+        if (dbPromise) return dbPromise;
+        dbPromise = new Promise((resolve, reject) => {
+          const request = indexedDB.open(DB_NAME, DB_VERSION);
+          request.onupgradeneeded = () => {
+            const db = request.result;
+            if (!db.objectStoreNames.contains('sessions')) {
+              const sessions = db.createObjectStore('sessions', { keyPath: 'id' });
+              sessions.createIndex('startedAt', 'startedAt');
+              sessions.createIndex('day', 'day');
+              sessions.createIndex('modeId', 'modeId');
+            }
+            if (!db.objectStoreNames.contains('presets')) {
+              const presetsStore = db.createObjectStore('presets', { keyPath: 'id' });
+              presetsStore.createIndex('name', 'name');
+            }
+          };
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+        return dbPromise;
+      }
+
+      function readLegacyJson(key, fallback) {
         try {
-          const raw = JSON.parse(localStorage.getItem(this.key));
-          if (!Array.isArray(raw)) return [];
-          return raw
-            .map(item => ({
-              id: String(item.id || ''),
-              name: String(item.name || '').trim(),
-              phases: sanitizePhases(item.phases)
-            }))
-            .filter(item => item.id && item.name);
+          const parsed = JSON.parse(localStorage.getItem(key));
+          return parsed ?? fallback;
         } catch {
-          return [];
+          return fallback;
         }
+      }
+
+      function createId(prefix = 'id') {
+        if (crypto.randomUUID) return crypto.randomUUID();
+        return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+      }
+
+      function transaction(storeName, mode, callback) {
+        return open().then(db => new Promise((resolve, reject) => {
+          const tx = db.transaction(storeName, mode);
+          const storeRef = tx.objectStore(storeName);
+          const result = callback(storeRef);
+          tx.oncomplete = () => resolve(result);
+          tx.onerror = () => reject(tx.error);
+          tx.onabort = () => reject(tx.error);
+        }));
+      }
+
+      function getAll(storeName) {
+        if (!isSupported()) return Promise.resolve([]);
+        return open().then(db => new Promise((resolve, reject) => {
+          const tx = db.transaction(storeName, 'readonly');
+          const request = tx.objectStore(storeName).getAll();
+          request.onsuccess = () => resolve(request.result || []);
+          request.onerror = () => reject(request.error);
+        })).catch(() => []);
+      }
+
+      function putAll(storeName, list) {
+        if (!isSupported()) return Promise.resolve();
+        return transaction(storeName, 'readwrite', storeRef => {
+          list.forEach(item => storeRef.put(item));
+        }).catch(() => {});
+      }
+
+      function clearAndPut(storeName, list) {
+        if (!isSupported()) return Promise.resolve();
+        return transaction(storeName, 'readwrite', storeRef => {
+          storeRef.clear();
+          list.forEach(item => storeRef.put(item));
+        }).catch(() => {});
+      }
+
+      function normalizePreset(item) {
+        return {
+          id: String(item.id || ''),
+          name: String(item.name || '').trim(),
+          phases: sanitizePhases(item.phases)
+        };
+      }
+
+      function normalizeSession(item) {
+        const startedAt = Number(item.startedAt) || Date.now();
+        const durationMs = Math.max(0, Number(item.durationMs ?? item.elapsedMs) || 0);
+        return {
+          id: String(item.id || createId('session')),
+          startedAt,
+          day: item.day || new Date(startedAt).toISOString().slice(0, 10),
+          durationMs,
+          modeId: String(item.modeId || ''),
+          modeName: String(item.modeName || ''),
+          pattern: sanitizePhases(item.pattern || [4, 0, 4, 0]),
+          completed: item.completed !== false
+        };
+      }
+
+      function readLegacyPresets() {
+        const raw = readLegacyJson(LEGACY_KEYS.presets, []);
+        if (!Array.isArray(raw)) return [];
+        return raw.map(normalizePreset).filter(item => item.id && item.name);
+      }
+
+      function readLegacyStatsSession() {
+        const raw = readLegacyJson(LEGACY_KEYS.stats, null) || readLegacyJson(LEGACY_KEYS.oldStats, null);
+        if (!raw) return null;
+        const totalMinutes = Math.round(Math.max(0, Number(raw.totalMinutes ?? raw.total) || 0));
+        if (!totalMinutes) return null;
+        const lastDay = typeof raw.lastDay === 'string' && raw.lastDay ? raw.lastDay : new Date().toISOString().slice(0, 10);
+        const startedAt = new Date(`${lastDay}T12:00:00`).getTime() || Date.now();
+        return normalizeSession({
+          id: 'legacy-total-minutes',
+          startedAt,
+          day: lastDay,
+          durationMs: totalMinutes * 60000,
+          modeId: 'legacy',
+          modeName: 'Импортированная статистика',
+          pattern: [4, 0, 4, 0],
+          completed: true
+        });
+      }
+
+      function readFallbackSessions() {
+        const raw = readLegacyJson(LEGACY_KEYS.sessionFallback, []);
+        return Array.isArray(raw) ? raw.map(normalizeSession) : [];
+      }
+
+      function writeFallbackSessions(list) {
+        localStorage.setItem(LEGACY_KEYS.sessionFallback, JSON.stringify(list.map(normalizeSession)));
+      }
+
+      async function migrateLegacyData() {
+        if (localStorage.getItem(LEGACY_KEYS.migration) === 'done') return;
+        const [sessions, presetsList] = await Promise.all([
+          getAll('sessions'),
+          getAll('presets')
+        ]);
+        const legacySession = sessions.length ? null : readLegacyStatsSession();
+        const legacyPresets = presetsList.length ? [] : readLegacyPresets();
+        if (legacySession) await putAll('sessions', [legacySession]);
+        if (legacyPresets.length) await putAll('presets', legacyPresets);
+        localStorage.setItem(LEGACY_KEYS.migration, 'done');
+      }
+
+      async function requestPersistence() {
+        if (!navigator.storage?.persist) return;
+        try {
+          await navigator.storage.persist();
+        } catch {}
+      }
+
+      return {
+        LEGACY_KEYS,
+        async init() {
+          if (!isSupported()) return;
+          await open();
+          await migrateLegacyData();
+          requestPersistence();
+        },
+        async getPresets() {
+          if (!isSupported()) return readLegacyPresets();
+          await migrateLegacyData();
+          return (await getAll('presets')).map(normalizePreset).filter(item => item.id && item.name);
+        },
+        async savePresets(list) {
+          const normalized = list.map(normalizePreset).filter(item => item.id && item.name);
+          localStorage.setItem(LEGACY_KEYS.presets, JSON.stringify(normalized));
+          if (isSupported()) await clearAndPut('presets', normalized);
+        },
+        async getSessions() {
+          if (!isSupported()) return readFallbackSessions();
+          await migrateLegacyData();
+          return (await getAll('sessions')).map(normalizeSession);
+        },
+        async addSession(session) {
+          const normalized = normalizeSession(session);
+          if (!isSupported()) {
+            const current = readFallbackSessions();
+            current.push(normalized);
+            writeFallbackSessions(current);
+            return normalized;
+          }
+          await putAll('sessions', [normalized]);
+          return normalized;
+        }
+      };
+    })();
+
+    const savedModesStore = {
+      async read() {
+        return calmDb.getPresets();
       },
-      write(list) {
-        localStorage.setItem(this.key, JSON.stringify(list));
+      async write(list) {
+        return calmDb.savePresets(list);
       }
     };
-    let savedModes = savedModesStore.read();
+    let savedModes = [];
 
     function getSavedMode(modeKey) {
       if (typeof modeKey !== 'string' || !modeKey.startsWith('saved:')) return null;
@@ -223,9 +415,6 @@
       }
       updateDeleteButtonVisibility();
     }
-
-    renderSavedOptions();
-    updateDeleteButtonVisibility();
 
     // ------- ХРАНИЛКА -------
     const store = {
@@ -316,24 +505,25 @@
         localStorage.setItem(this.key, JSON.stringify(s));
         localStorage.removeItem(this.legacyKey);
       },
-      addMilliseconds(ms) {
-        const rawMinutes = Math.max(0, ms) / 60000;
-        const minutes = Math.round(rawMinutes);
-        if (minutes <= 0) return;
-        const s = this.read();
-        const day = new Date().toISOString().slice(0,10);
-        if (s.lastDay !== day) {
-          s.lastDay = day;
-          s.todayMinutes = 0;
-        }
-        s.todayMinutes += minutes;
-        s.totalMinutes += minutes;
-        this.write(s);
+      async readFromSessions() {
+        const sessions = await calmDb.getSessions();
+        const today = new Date().toISOString().slice(0, 10);
+        return sessions.reduce((acc, session) => {
+          const minutes = Math.round(Math.max(0, Number(session.durationMs) || 0) / 60000);
+          acc.totalMinutes += minutes;
+          if (session.day === today) acc.todayMinutes += minutes;
+          return acc;
+        }, { totalMinutes: 0, todayMinutes: 0, lastDay: today });
+      },
+      async addSession(session) {
+        const durationMs = Math.max(0, Number(session.durationMs) || 0);
+        if (Math.round(durationMs / 60000) <= 0) return;
+        await calmDb.addSession(session);
         renderStats();
       }
     };
-    function renderStats() {
-      const s = stats.read();
+    async function renderStats() {
+      const s = await stats.readFromSessions();
       document.getElementById('statToday').textContent = `Сегодня: ${formatMinutes(s.todayMinutes)}`;
       document.getElementById('statTotal').textContent = `Всего: ${formatMinutes(s.totalMinutes)}`;
     }
@@ -681,9 +871,21 @@
         return;
       }
       const elapsedMs = totalMs;
+      const finishedMode = getModeMeta(selMode.value);
+      const finishedPattern = finishedMode.phases.slice();
+      const startedAt = Date.now() - Math.round(elapsedMs);
       pause({ keepSound: true });
       soundEngine.complete();
-      stats.addMilliseconds(elapsedMs);
+      stats.addSession({
+        id: crypto.randomUUID ? crypto.randomUUID() : `session-${Date.now().toString(36)}`,
+        startedAt,
+        day: new Date(startedAt).toISOString().slice(0, 10),
+        durationMs: elapsedMs,
+        modeId: selMode.value,
+        modeName: finishedMode.name,
+        pattern: finishedPattern,
+        completed: true
+      });
       elPhase.textContent = 'Готово ✔';
       ariaPhase.textContent = 'Готово';
       elSub.textContent = 'Отметьте ощущения и плавно вернитесь к делам';
@@ -800,7 +1002,7 @@
       });
     }
 
-    btnSaveCustom.addEventListener('click', () => {
+    btnSaveCustom.addEventListener('click', async () => {
       const rawPhases = getCustomInputValues();
       const total = rawPhases.reduce((sum, val) => sum + val, 0);
       if (total <= 0) {
@@ -825,8 +1027,8 @@
         modeId = Date.now().toString(36);
         savedModes.push({ id: modeId, name, phases: clean });
       }
-      savedModesStore.write(savedModes);
-      savedModes = savedModesStore.read();
+      await savedModesStore.write(savedModes);
+      savedModes = await savedModesStore.read();
       renderSavedOptions(`saved:${modeId}`);
       setCustomInputs(clean);
       selMode.value = `saved:${modeId}`;
@@ -836,14 +1038,14 @@
       updateModeInfo();
     });
 
-    btnDeleteCustom.addEventListener('click', () => {
+    btnDeleteCustom.addEventListener('click', async () => {
       if (!selMode.value.startsWith('saved:')) return;
       const mode = getSavedMode(selMode.value);
       if (!mode) return;
       const ok = confirm(`Удалить режим «${mode.name}»?`);
       if (!ok) return;
       savedModes = savedModes.filter(item => item.id !== mode.id);
-      savedModesStore.write(savedModes);
+      await savedModesStore.write(savedModes);
       renderSavedOptions('custom');
       selMode.value = 'custom';
       toggleCustom();
@@ -884,14 +1086,22 @@
     });
 
     // ------- ИНИЦ ------
-    store.load();
-    applyPanelState();
-    updateModeInfo();
-    renderStats();
-    setButtons();
+    async function initApp() {
+      await calmDb.init().catch(() => {});
+      savedModes = await savedModesStore.read();
+      renderSavedOptions();
+      updateDeleteButtonVisibility();
+      store.load();
+      applyPanelState();
+      updateModeInfo();
+      await renderStats();
+      setButtons();
 
-    // Подсказки для SR (первый фокус)
-    setTimeout(() => { ariaPhase.textContent = 'Приложение готово. Выберите режим и нажмите Старт.'; }, 200);
+      // Подсказки для SR (первый фокус)
+      setTimeout(() => { ariaPhase.textContent = 'Приложение готово. Выберите режим и нажмите Старт.'; }, 200);
+    }
+
+    initApp();
 
     // ------- PWA -------
     if ('serviceWorker' in navigator) {
