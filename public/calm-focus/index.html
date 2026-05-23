@@ -75,6 +75,20 @@
       </div>
     </section>
 
+    <section class="data-tools field" aria-label="Данные">
+      <label for="importMode">Данные</label>
+      <div class="data-actions">
+        <button type="button" id="exportJson" class="btn small ghost">Экспорт JSON</button>
+        <button type="button" id="exportCsv" class="btn small ghost">Экспорт CSV</button>
+        <select id="importMode" aria-label="Режим импорта">
+          <option value="merge">Объединить</option>
+          <option value="replace">Заменить</option>
+        </select>
+        <button type="button" id="importJson" class="btn small ghost">Импорт JSON</button>
+        <input id="importFile" class="visually-hidden" type="file" accept="application/json,.json" />
+      </div>
+    </section>
+
     <section id="modeInfo" class="mode-info" aria-live="polite">
       <h2 id="modeInfoTitle">Коробочное 4-4-4-4</h2>
       <p id="modeInfoDesc">Классический ритм для быстрого восстановления после стресса.</p>

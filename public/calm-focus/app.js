@@ -62,6 +62,11 @@
     const elModeTags = document.getElementById('modeTags');
     const customInputs = [cIn, cH1, cOut, cH2];
     const savedGroup = document.getElementById('savedModesGroup');
+    const btnExportJson = document.getElementById('exportJson');
+    const btnExportCsv = document.getElementById('exportCsv');
+    const btnImportJson = document.getElementById('importJson');
+    const fileImport = document.getElementById('importFile');
+    const selImportMode = document.getElementById('importMode');
     const elGraphArea = document.getElementById('graphArea');
     const elGraphLine = document.getElementById('graphLine');
     const elGraphLineActive = document.getElementById('graphLineActive');
@@ -315,6 +320,32 @@
         localStorage.setItem(LEGACY_KEYS.sessionFallback, JSON.stringify(list.map(normalizeSession)));
       }
 
+      async function saveSessions(list, { replace = false } = {}) {
+        const normalized = list.map(normalizeSession);
+        if (!isSupported()) {
+          if (replace) {
+            writeFallbackSessions(normalized);
+          } else {
+            const existing = readFallbackSessions();
+            const merged = mergeById(existing, normalized);
+            writeFallbackSessions(merged);
+          }
+          return normalized;
+        }
+        if (replace) {
+          await clearAndPut('sessions', normalized);
+        } else {
+          await putAll('sessions', normalized);
+        }
+        return normalized;
+      }
+
+      function mergeById(base, incoming) {
+        const map = new Map(base.map(item => [item.id, item]));
+        incoming.forEach(item => map.set(item.id, item));
+        return [...map.values()];
+      }
+
       async function migrateLegacyData() {
         if (localStorage.getItem(LEGACY_KEYS.migration) === 'done') return;
         const [sessions, presetsList] = await Promise.all([
@@ -368,6 +399,9 @@
           }
           await putAll('sessions', [normalized]);
           return normalized;
+        },
+        async saveSessions(list, options) {
+          return saveSessions(list, options);
         }
       };
     })();
@@ -526,6 +560,126 @@
       const s = await stats.readFromSessions();
       document.getElementById('statToday').textContent = `Сегодня: ${formatMinutes(s.todayMinutes)}`;
       document.getElementById('statTotal').textContent = `Всего: ${formatMinutes(s.totalMinutes)}`;
+    }
+
+    // ------- ЭКСПОРТ / ИМПОРТ -------
+    async function buildBackup() {
+      return {
+        app: 'calm-focus',
+        schemaVersion: 1,
+        exportedAt: new Date().toISOString(),
+        settings: readJsonLocal(calmDb.LEGACY_KEYS.settings, {}),
+        presets: savedModes,
+        sessions: await calmDb.getSessions()
+      };
+    }
+
+    function readJsonLocal(key, fallback) {
+      try {
+        return JSON.parse(localStorage.getItem(key)) ?? fallback;
+      } catch {
+        return fallback;
+      }
+    }
+
+    function downloadText(filename, text, type) {
+      const blob = new Blob([text], { type });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function todayStamp() {
+      return new Date().toISOString().slice(0, 10);
+    }
+
+    function csvCell(value) {
+      const text = String(value ?? '');
+      return `"${text.replace(/"/g, '""')}"`;
+    }
+
+    function sessionsToCsv(sessions) {
+      const header = ['startedAt', 'day', 'modeId', 'modeName', 'durationMinutes', 'pattern', 'completed'];
+      const rows = sessions
+        .slice()
+        .sort((a, b) => Number(a.startedAt) - Number(b.startedAt))
+        .map(session => [
+          new Date(session.startedAt).toISOString(),
+          session.day,
+          session.modeId,
+          session.modeName,
+          Math.round((Number(session.durationMs) || 0) / 60000),
+          Array.isArray(session.pattern) ? session.pattern.join('-') : '',
+          session.completed !== false
+        ].map(csvCell).join(','));
+      return [header.map(csvCell).join(','), ...rows].join('\n');
+    }
+
+    function normalizeImportedBackup(raw) {
+      if (!raw || raw.app !== 'calm-focus' || raw.schemaVersion !== 1) {
+        throw new Error('Файл не похож на резервную копию Calm & Focus.');
+      }
+      return {
+        settings: raw.settings && typeof raw.settings === 'object' ? raw.settings : null,
+        presets: Array.isArray(raw.presets) ? raw.presets : [],
+        sessions: Array.isArray(raw.sessions) ? raw.sessions : []
+      };
+    }
+
+    function mergeListsById(base, incoming) {
+      const map = new Map(base.map(item => [String(item.id), item]));
+      incoming.forEach(item => map.set(String(item.id), item));
+      return [...map.values()];
+    }
+
+    async function exportJsonBackup() {
+      const backup = await buildBackup();
+      downloadText(
+        `calm-focus-backup-${todayStamp()}.json`,
+        JSON.stringify(backup, null, 2),
+        'application/json'
+      );
+    }
+
+    async function exportCsvStats() {
+      const sessions = await calmDb.getSessions();
+      downloadText(
+        `calm-focus-sessions-${todayStamp()}.csv`,
+        sessionsToCsv(sessions),
+        'text/csv;charset=utf-8'
+      );
+    }
+
+    async function importJsonBackup(file) {
+      const backup = normalizeImportedBackup(JSON.parse(await file.text()));
+      const mode = selImportMode?.value === 'replace' ? 'replace' : 'merge';
+      const replace = mode === 'replace';
+      const message = replace
+        ? 'Заменить текущие сессии и сохранённые режимы данными из файла?'
+        : 'Добавить данные из файла к текущей статистике и режимам?';
+      if (!confirm(message)) return;
+
+      if (backup.settings) {
+        localStorage.setItem(calmDb.LEGACY_KEYS.settings, JSON.stringify(backup.settings));
+      }
+
+      const nextPresets = replace
+        ? backup.presets
+        : mergeListsById(savedModes, backup.presets);
+      await savedModesStore.write(nextPresets);
+      savedModes = await savedModesStore.read();
+      await calmDb.saveSessions(backup.sessions, { replace });
+
+      renderSavedOptions(selMode.value);
+      store.load();
+      updateModeInfo();
+      await renderStats();
+      alert('Данные импортированы.');
     }
 
     // ------- УТИЛИТЫ -------
@@ -999,6 +1153,32 @@
         isPanelVisible = !isPanelVisible;
         applyPanelState();
         store.save();
+      });
+    }
+
+    if (btnExportJson) {
+      btnExportJson.addEventListener('click', () => {
+        exportJsonBackup().catch(() => alert('Не удалось экспортировать JSON.'));
+      });
+    }
+
+    if (btnExportCsv) {
+      btnExportCsv.addEventListener('click', () => {
+        exportCsvStats().catch(() => alert('Не удалось экспортировать CSV.'));
+      });
+    }
+
+    if (btnImportJson && fileImport) {
+      btnImportJson.addEventListener('click', () => {
+        fileImport.value = '';
+        fileImport.click();
+      });
+      fileImport.addEventListener('change', () => {
+        const file = fileImport.files?.[0];
+        if (!file) return;
+        importJsonBackup(file).catch(error => {
+          alert(error.message || 'Не удалось импортировать JSON.');
+        });
       });
     }
 

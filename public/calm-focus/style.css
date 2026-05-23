@@ -175,6 +175,23 @@ input[type="number"] {
   gap: 8px;
   margin-top: 10px;
 }
+.data-tools {
+  margin-bottom: clamp(8px, 2.4vw, 12px);
+}
+.data-actions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, auto));
+  gap: 8px;
+  align-items: center;
+}
+.data-actions .btn,
+.data-actions select {
+  min-height: 38px;
+}
+.data-actions select {
+  padding: 7px 10px;
+  font-size: 13px;
+}
 .opt.disabled { opacity: 0.48; pointer-events: none; }
 
 .stage {
@@ -346,12 +363,14 @@ footer {
   .controls { gap: clamp(12px, 4vw, 16px); }
   .row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .custom-actions { justify-content: space-between; }
+  .data-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .stage .bar { min-width: 140px; }
   header { flex-direction: column; align-items: flex-start; }
   header .meta { font-size: clamp(12px, 3.6vw, 14px); }
 }
 .app.collapsed .controls,
-.app.collapsed #customFields {
+.app.collapsed #customFields,
+.app.collapsed .data-tools {
   display: none !important;
 }
 .app.collapsed header {
