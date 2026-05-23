@@ -47,8 +47,8 @@ a:focus-visible {
   margin: 0 auto;
   padding: clamp(40px, 8vw, 88px) 0;
   display: grid;
-  align-content: center;
-  gap: clamp(44px, 8vw, 72px);
+  align-content: start;
+  gap: clamp(42px, 7vw, 64px);
 }
 
 .intro {
@@ -70,8 +70,8 @@ h1, h2, h3, p {
 
 h1 {
   margin: 0;
-  font-size: clamp(3rem, 12vw, 7rem);
-  line-height: 0.92;
+  font-size: clamp(2.9rem, 9vw, 6.4rem);
+  line-height: 0.96;
   font-weight: 760;
 }
 
@@ -80,6 +80,27 @@ h1 {
   margin: clamp(22px, 4vw, 30px) 0 0;
   color: var(--muted);
   font-size: clamp(1.05rem, 2.4vw, 1.35rem);
+}
+
+.content-section {
+  display: grid;
+  gap: 18px;
+}
+
+.text-stack {
+  display: grid;
+  gap: 14px;
+}
+
+.content-section p,
+.idea-list,
+.compact-list {
+  max-width: 740px;
+}
+
+.content-section p {
+  margin: 0;
+  color: var(--muted);
 }
 
 .links {
@@ -114,6 +135,10 @@ h1 {
   gap: 18px;
 }
 
+.section-heading {
+  max-width: 740px;
+}
+
 .section-heading h2 {
   margin: 0;
   font-size: clamp(1.5rem, 4vw, 2rem);
@@ -143,6 +168,56 @@ h1 {
   color: var(--muted);
 }
 
+.compact-list,
+.idea-list,
+.tag-list {
+  padding: 0;
+  list-style: none;
+}
+
+.compact-list,
+.idea-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.compact-list li,
+.idea-list li {
+  position: relative;
+  padding-left: 18px;
+  color: var(--muted);
+}
+
+.compact-list li::before,
+.idea-list li::before {
+  content: "";
+  position: absolute;
+  top: 0.68em;
+  left: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0 0;
+}
+
+.tag-list li {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgba(255, 250, 242, 0.48);
+  color: color-mix(in srgb, var(--fg) 78%, var(--muted));
+  font-size: 0.88rem;
+  font-weight: 620;
+}
+
 .open-link {
   background: var(--fg);
   border-color: var(--fg);
@@ -154,6 +229,10 @@ h1 {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
+}
+
+.contact-section .links {
+  margin-top: 0;
 }
 
 @media (max-width: 640px) {

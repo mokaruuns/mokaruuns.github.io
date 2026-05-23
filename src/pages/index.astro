@@ -5,31 +5,89 @@ const links = [
   { label: 'GitHub', href: 'https://github.com/mokaruuns' },
   { label: 'Telegram', href: 'https://t.me/mokaruuns' }
 ];
+
+const focusItems = [
+  'Reliable backend services',
+  'Event-driven architecture',
+  'PostgreSQL schema and query design',
+  'Idempotent and fault-tolerant processing',
+  'gRPC API design',
+  'Logs, metrics and alerts that help in production',
+  'Code reviews focused on correctness and maintainability'
+];
+
+const calmFocusTech = [
+  'Offline-first',
+  'Local state with localStorage',
+  'Static HTML/CSS/JavaScript',
+  'Service worker cache',
+  'Mobile-friendly UI',
+  'Calm interface'
+];
+
+const plannedIdeas = [
+  'RFC Review Checklist - a checklist for reviewing backend design docs and diagrams.',
+  'AI-assisted Code Review Rules - practical rules for using AI in code review without losing engineering control.',
+  'PostgreSQL Notes - compact notes about indexes, VACUUM, ANALYZE and query plans.',
+  'gRPC API Design Notes - notes about error handling, business statuses and API contracts.'
+];
 ---
 
 <!doctype html>
-<html lang="ru">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Личная страница mokaruuns: проекты, контакты и небольшие веб-инструменты." />
+    <meta
+      name="description"
+      content="Marsel Akhmetov / mokaruuns: backend developer working with Go, PostgreSQL, Kafka, gRPC and small calm web tools."
+    />
     <meta name="theme-color" content="#f7f3ec" />
-    <title>mokaruuns</title>
+    <title>Marsel Akhmetov / mokaruuns</title>
   </head>
   <body>
     <main class="page">
       <section class="intro" aria-labelledby="intro-title">
-        <p class="eyebrow">personal page</p>
-        <h1 id="intro-title">mokaruuns</h1>
+        <p class="eyebrow">mokaruuns</p>
+        <h1 id="intro-title">Marsel Akhmetov</h1>
         <p class="summary">
-          Делаю небольшие спокойные веб-инструменты и аккуратные интерфейсы,
-          которые помогают фокусироваться на главном.
+          Backend developer. Go, PostgreSQL, Kafka, gRPC and distributed systems.
+          I build reliable backend services and small calm web tools.
         </p>
-        <nav class="links" aria-label="Контакты">
+        <nav class="links" aria-label="Contacts">
           {links.map((link) => (
             <a href={link.href} rel="me noopener noreferrer" target="_blank">{link.label}</a>
           ))}
         </nav>
+      </section>
+
+      <section class="content-section" aria-labelledby="about-title">
+        <div class="section-heading">
+          <p class="eyebrow">about</p>
+          <h2 id="about-title">About</h2>
+        </div>
+        <div class="text-stack">
+          <p>
+            I'm a backend developer working mostly with Go, PostgreSQL, Kafka and gRPC
+            in fintech and banking systems. I care about reliable integrations, clear
+            service boundaries, idempotent processing, useful observability and
+            maintainable data models.
+          </p>
+          <p>
+            Outside of work, I build small web tools that solve one task well: simple,
+            local-first where possible, and without unnecessary interface noise.
+          </p>
+        </div>
+      </section>
+
+      <section class="content-section" aria-labelledby="focus-title">
+        <div class="section-heading">
+          <p class="eyebrow">engineering focus</p>
+          <h2 id="focus-title">Work Focus</h2>
+        </div>
+        <ul class="compact-list">
+          {focusItems.map((item) => <li>{item}</li>)}
+        </ul>
       </section>
 
       <section class="projects" aria-labelledby="projects-title">
@@ -42,12 +100,50 @@ const links = [
           <div>
             <h3>Calm &amp; Focus</h3>
             <p>
-              Офлайн-приложение для дыхательных практик: готовые ритмы,
-              свой режим, звук, вибро, прогресс, статистика и график дыхания.
+              Calm &amp; Focus is an offline breathing practice app. It works without
+              registration, ads, subscriptions or a backend server. It includes ready-made
+              breathing modes, a custom mode, sound and vibration cues, progress tracking,
+              local statistics and a breathing graph.
             </p>
+            <ul class="tag-list" aria-label="Technical focus">
+              {calmFocusTech.map((item) => <li>{item}</li>)}
+            </ul>
           </div>
-          <a class="open-link" href="/calm-focus/">Открыть</a>
+          <a class="open-link" href="/calm-focus/">Open</a>
         </article>
+      </section>
+
+      <section class="content-section" aria-labelledby="notes-title">
+        <div class="section-heading">
+          <p class="eyebrow">notes</p>
+          <h2 id="notes-title">Notes</h2>
+        </div>
+        <p>
+          I plan to publish short engineering notes about backend design, PostgreSQL,
+          distributed systems and AI-assisted development.
+        </p>
+      </section>
+
+      <section class="content-section" aria-labelledby="ideas-title">
+        <div class="section-heading">
+          <p class="eyebrow">planned projects</p>
+          <h2 id="ideas-title">Ideas</h2>
+        </div>
+        <ul class="idea-list">
+          {plannedIdeas.map((item) => <li>{item}</li>)}
+        </ul>
+      </section>
+
+      <section class="content-section contact-section" aria-labelledby="contact-title">
+        <div class="section-heading">
+          <p class="eyebrow">contact</p>
+          <h2 id="contact-title">Contact</h2>
+        </div>
+        <nav class="links" aria-label="Contact links">
+          {links.map((link) => (
+            <a href={link.href} rel="me noopener noreferrer" target="_blank">{link.label}</a>
+          ))}
+        </nav>
       </section>
     </main>
   </body>
