@@ -896,7 +896,7 @@
     // ------- PWA -------
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/service-worker.js').catch(() => {
+        navigator.serviceWorker.register('/calm-focus/service-worker.js', { scope: '/calm-focus/' }).catch(() => {
           // тихо игнорируем ошибку регистрации, чтобы не мешать работе приложения
         });
       });

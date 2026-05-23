@@ -1,17 +1,18 @@
 const CACHE_PREFIX = 'breath-cache-';
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2-calm-focus';
 const CACHE_NAME = `${CACHE_PREFIX}${CACHE_VERSION}`;
+const APP_SCOPE = '/calm-focus/';
 
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/style.css',
-  '/app.js',
-  '/manifest.webmanifest',
-  '/service-worker.js',
-  '/icons/icon-192.svg',
-  '/icons/icon-512.svg',
-  '/icons/icon-maskable.svg'
+  APP_SCOPE,
+  `${APP_SCOPE}index.html`,
+  `${APP_SCOPE}style.css`,
+  `${APP_SCOPE}app.js`,
+  `${APP_SCOPE}manifest.webmanifest`,
+  `${APP_SCOPE}service-worker.js`,
+  `${APP_SCOPE}icons/icon-192.svg`,
+  `${APP_SCOPE}icons/icon-512.svg`,
+  `${APP_SCOPE}icons/icon-maskable.svg`
 ];
 
 self.addEventListener('install', (event) => {
@@ -43,6 +44,9 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) {
     return;
   }
+  if (!url.pathname.startsWith(APP_SCOPE)) {
+    return;
+  }
 
   event.respondWith(
     caches.match(request).then((cached) => {
@@ -59,7 +63,7 @@ self.addEventListener('fetch', (event) => {
           });
           return response;
         })
-        .catch(() => caches.match('/index.html'));
+        .catch(() => caches.match(`${APP_SCOPE}index.html`));
     })
   );
 });
